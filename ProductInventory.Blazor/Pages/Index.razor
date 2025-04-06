@@ -8,7 +8,6 @@
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
-
 @inject IProductService ProductService
 @inject AppStateService AppState
 
@@ -21,18 +20,18 @@
     </MudItem>
     <MudItem xs="4">
         <MudNumericField @bind-Value="AppState.FilterState.MinPrice" HideSpinButtons="true" Label="Min Price" Variant="Variant.Outlined" Min="0" Max="int.MaxValue"
-            Immediate="true" OnKeyUp="ApplyFilters"/>
+                         Immediate="true" OnKeyUp="ApplyFilters" />
     </MudItem>
     <MudItem xs="4">
-        <MudNumericField @bind-Value="AppState.FilterState.MaxPrice" HideSpinButtons="true" Label="Max Price" Variant="Variant.Outlined" Min="0" Max="int.MaxValue" 
-        Immediate="true" OnKeyUp="ApplyFilters" />
+        <MudNumericField @bind-Value="AppState.FilterState.MaxPrice" HideSpinButtons="true" Label="Max Price" Variant="Variant.Outlined" Min="0" Max="int.MaxValue"
+                         Immediate="true" OnKeyUp="ApplyFilters" />
     </MudItem>
 </MudGrid>
 
 @if (AppState.TryGetCachedProducts(out var products))
 {
-    <ProductList Products="products" OnEdit="OpenProductDialog" OnDelete="DeleteProduct" OnAdd="OpenProductDialog" OnViewDetails="OpenProductDetailsDialog" 
-        OnPageChanged="OnPageChanged" />
+    <ProductList Products="products" OnEdit="OpenProductDialog" OnDelete="DeleteProduct" OnAdd="OpenProductDialog" OnViewDetails="OpenProductDetailsDialog"
+                 OnPageChanged="OnPageChanged" />
 }
 else
 {
@@ -42,13 +41,7 @@ else
 @code {
     protected override async Task OnInitializedAsync()
     {
-        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
-        var queryParams = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
-
-        AppState.FilterState.Name = queryParams.TryGetValue("name", out var name) ? name : (string?)null;
-        AppState.FilterState.MinPrice = queryParams.TryGetValue("minPrice", out var minPrice) ? !StringValues.IsNullOrEmpty(minPrice) ? decimal.Parse(minPrice) : (decimal?)null : (decimal?)null;
-        AppState.FilterState.MaxPrice = queryParams.TryGetValue("maxPrice", out var maxPrice) ? !StringValues.IsNullOrEmpty(maxPrice) ? decimal.Parse(maxPrice) : (decimal?)null : (decimal?)null;
-        AppState.FilterState.Page = queryParams.TryGetValue("page", out var page) ? int.Parse(page) : 1;
+        ParseQueryParams();
 
         if (!AppState.TryGetCachedProducts(out _))
         {
@@ -60,70 +53,35 @@ else
     {
         AppState.FilterState.Page = newPage;
         await ProductService.LoadProductsAsync();
-
-        var uriBuilder = new UriBuilder(Navigation.Uri);
-        var query = System.Web.HttpUtility.ParseQueryString(uriBuilder.Query);
-        query["page"] = AppState.FilterState.Page.ToString();
-        uriBuilder.Query = query.ToString();
-
-        Navigation.NavigateTo(uriBuilder.ToString(), forceLoad: false);
+        UpdateUrlFromFilters();
     }
 
     private async Task ApplyFilters()
     {
         AppState.FilterState.Page = 1;
         await ProductService.LoadProductsAsync();
-
-        var uriBuilder = new UriBuilder(Navigation.Uri);
-        var query = System.Web.HttpUtility.ParseQueryString(uriBuilder.Query);
-
-        query["name"] = AppState.FilterState.Name ?? string.Empty;
-        query["minPrice"] = AppState.FilterState.MinPrice?.ToString() ?? string.Empty;
-        query["maxPrice"] = AppState.FilterState.MaxPrice?.ToString() ?? string.Empty;
-        query["page"] = AppState.FilterState.Page.ToString();
-
-        uriBuilder.Query = query.ToString();
-
-        Navigation.NavigateTo(uriBuilder.ToString(), forceLoad: false);
+        UpdateUrlFromFilters();
     }
 
     private async Task OpenProductDialog(Product product)
     {
+        var isNew = product.Id == 0;
         var parameters = new DialogParameters<ProductDialog> { { x => x.product, product } };
-		var isNew = product.Id == 0;
 
         var dialog = await DialogService.ShowAsync<ProductDialog>(isNew ? "Add Product" : "Edit Product", parameters);
         var result = await dialog.Result;
 
-        if (!result.Canceled)
-        {
-            if (isNew)
-            {
-                var success = await ProductService.AddProductAsync(product);
-                if (success)
-                {
-                    Snackbar.Add("Product added successfully!", Severity.Success);
-                    await ProductService.LoadProductsAsync(true);
-                }
-                else
-                {
-                    Snackbar.Add("Failed to add product.", Severity.Error);
-                }
-            }
-            else
-            {
-                var success = await ProductService.UpdateProductAsync(product);
-                if (success)
-                {
-                    Snackbar.Add("Product updated successfully!", Severity.Success);
-                    await ProductService.LoadProductsAsync(true);
-                }
-                else
-                {
-                    Snackbar.Add("Failed to update product.", Severity.Error);
-                }
-            }
-        }
+        if (result.Canceled) return;
+
+        var success = isNew
+            ? await ProductService.AddProductAsync(product)
+            : await ProductService.UpdateProductAsync(product);
+
+        Snackbar.Add(success ? $"{(isNew ? "Added" : "Updated")} product successfully!" : $"Failed to {(isNew ? "add" : "update")} product.",
+                     success ? Severity.Success : Severity.Error);
+
+        if (success)
+            await ProductService.LoadProductsAsync(resetState: true);
     }
 
     private async Task OpenProductDetailsDialog(Product product)
@@ -135,22 +93,44 @@ else
     private async Task DeleteProduct(int productId)
     {
         var parameters = new DialogParameters<CancelOkDialog> { { x => x.message, "Are you sure want to delete?" } };
-
         var dialog = await DialogService.ShowAsync<CancelOkDialog>("Delete Product", parameters);
         var result = await dialog.Result;
 
-        if (!result.Canceled)
-        {
-            var success = await ProductService.DeleteProductAsync(productId);
-            if (success)
-            {
-                Snackbar.Add("Product deleted successfully!", Severity.Success);
-                await ProductService.LoadProductsAsync(true);
-            }
-            else
-            {
-                Snackbar.Add("Failed to delete product.", Severity.Error);
-            }
-        }
+        if (result.Canceled) return;
+
+        var success = await ProductService.DeleteProductAsync(productId);
+        Snackbar.Add(success ? "Product deleted successfully!" : "Failed to delete product.",
+                     success ? Severity.Success : Severity.Error);
+
+        if (success)
+            await ProductService.LoadProductsAsync(resetState: true);
     }
+
+    private void ParseQueryParams()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var queryParams = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        AppState.FilterState.Name = queryParams.TryGetValue("name", out var name) ? name : (string?)null;
+        AppState.FilterState.MinPrice = TryParseDecimal(queryParams, "minPrice");
+        AppState.FilterState.MaxPrice = TryParseDecimal(queryParams, "maxPrice");
+        AppState.FilterState.Page = queryParams.TryGetValue("page", out var page) && int.TryParse(page, out var pg) ? pg : 1;
+    }
+
+    private void UpdateUrlFromFilters()
+    {
+        var uriBuilder = new UriBuilder(Navigation.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uriBuilder.Query);
+
+        query["name"] = AppState.FilterState.Name ?? string.Empty;
+        query["minPrice"] = AppState.FilterState.MinPrice?.ToString() ?? string.Empty;
+        query["maxPrice"] = AppState.FilterState.MaxPrice?.ToString() ?? string.Empty;
+        query["page"] = AppState.FilterState.Page.ToString();
+
+        uriBuilder.Query = query.ToString();
+        Navigation.NavigateTo(uriBuilder.ToString(), forceLoad: false);
+    }
+
+    private decimal? TryParseDecimal(Dictionary<string, StringValues> query, string key)
+        => query.TryGetValue(key, out var value) && decimal.TryParse(value, out var result) ? result : null;
 }

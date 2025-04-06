@@ -26,11 +26,12 @@ A full-stack application built with ASP.NET Core Web API and Blazor WebAssembly 
 
 ##  Project Structure
 
-ProductInventory/\
- ProductInventory.Api/  ASP.NET Core Web API project\
- ProductInventory.Blazor/  Blazor WebAssembly front-end\
- Dockerfile  Docker setup to serve both frontend and backend\
- README.md
+ProductInventory
+- ProductInventory.Api -> *ASP.NET Core Web API project*
+- ProductInventory.Api.Tests -> *API Tests project*
+- ProductInventory.Blazor -> *Blazor WebAssembly front-end project*
+- Dockerfile -> *Docker setup to serve both frontend and backend*
+- README.md
 
 ---
 
