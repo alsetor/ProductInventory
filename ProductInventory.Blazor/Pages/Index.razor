@@ -1,0 +1,156 @@
+﻿@page "/"
+@using Microsoft.Extensions.Primitives
+@using MudBlazor
+@using ProductInventory.Blazor.Components
+@using ProductInventory.Blazor.Services
+@using ProductInventory.Blazor.Models
+
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+@inject IProductService ProductService
+@inject AppStateService AppState
+
+<MudSnackbarProvider />
+
+<MudText Typo="Typo.h6" Class="mt-2">Filters</MudText>
+<MudGrid>
+    <MudItem xs="4">
+        <MudTextField @bind-Value="AppState.FilterState.Name" Label="Search by Name..." Variant="Variant.Outlined" Immediate="true" OnKeyUp="ApplyFilters" />
+    </MudItem>
+    <MudItem xs="4">
+        <MudNumericField @bind-Value="AppState.FilterState.MinPrice" HideSpinButtons="true" Label="Min Price" Variant="Variant.Outlined" Min="0" Max="int.MaxValue"
+            Immediate="true" OnKeyUp="ApplyFilters"/>
+    </MudItem>
+    <MudItem xs="4">
+        <MudNumericField @bind-Value="AppState.FilterState.MaxPrice" HideSpinButtons="true" Label="Max Price" Variant="Variant.Outlined" Min="0" Max="int.MaxValue" 
+        Immediate="true" OnKeyUp="ApplyFilters" />
+    </MudItem>
+</MudGrid>
+
+@if (AppState.TryGetCachedProducts(out var products))
+{
+    <ProductList Products="products" OnEdit="OpenProductDialog" OnDelete="DeleteProduct" OnAdd="OpenProductDialog" OnViewDetails="OpenProductDetailsDialog" 
+        OnPageChanged="OnPageChanged" />
+}
+else
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var queryParams = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        AppState.FilterState.Name = queryParams.TryGetValue("name", out var name) ? name : (string?)null;
+        AppState.FilterState.MinPrice = queryParams.TryGetValue("minPrice", out var minPrice) ? !StringValues.IsNullOrEmpty(minPrice) ? decimal.Parse(minPrice) : (decimal?)null : (decimal?)null;
+        AppState.FilterState.MaxPrice = queryParams.TryGetValue("maxPrice", out var maxPrice) ? !StringValues.IsNullOrEmpty(maxPrice) ? decimal.Parse(maxPrice) : (decimal?)null : (decimal?)null;
+        AppState.FilterState.Page = queryParams.TryGetValue("page", out var page) ? int.Parse(page) : 1;
+
+        if (!AppState.TryGetCachedProducts(out _))
+        {
+            await ProductService.LoadProductsAsync();
+        }
+    }
+
+    private async Task OnPageChanged(int newPage)
+    {
+        AppState.FilterState.Page = newPage;
+        await ProductService.LoadProductsAsync();
+
+        var uriBuilder = new UriBuilder(Navigation.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uriBuilder.Query);
+        query["page"] = AppState.FilterState.Page.ToString();
+        uriBuilder.Query = query.ToString();
+
+        Navigation.NavigateTo(uriBuilder.ToString(), forceLoad: false);
+    }
+
+    private async Task ApplyFilters()
+    {
+        AppState.FilterState.Page = 1;
+        await ProductService.LoadProductsAsync();
+
+        var uriBuilder = new UriBuilder(Navigation.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uriBuilder.Query);
+
+        query["name"] = AppState.FilterState.Name ?? string.Empty;
+        query["minPrice"] = AppState.FilterState.MinPrice?.ToString() ?? string.Empty;
+        query["maxPrice"] = AppState.FilterState.MaxPrice?.ToString() ?? string.Empty;
+        query["page"] = AppState.FilterState.Page.ToString();
+
+        uriBuilder.Query = query.ToString();
+
+        Navigation.NavigateTo(uriBuilder.ToString(), forceLoad: false);
+    }
+
+    private async Task OpenProductDialog(Product product)
+    {
+        var parameters = new DialogParameters<ProductDialog> { { x => x.product, product } };
+		var isNew = product.Id == 0;
+
+        var dialog = await DialogService.ShowAsync<ProductDialog>(isNew ? "Add Product" : "Edit Product", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            if (isNew)
+            {
+                var success = await ProductService.AddProductAsync(product);
+                if (success)
+                {
+                    Snackbar.Add("Product added successfully!", Severity.Success);
+                    await ProductService.LoadProductsAsync(true);
+                }
+                else
+                {
+                    Snackbar.Add("Failed to add product.", Severity.Error);
+                }
+            }
+            else
+            {
+                var success = await ProductService.UpdateProductAsync(product);
+                if (success)
+                {
+                    Snackbar.Add("Product updated successfully!", Severity.Success);
+                    await ProductService.LoadProductsAsync(true);
+                }
+                else
+                {
+                    Snackbar.Add("Failed to update product.", Severity.Error);
+                }
+            }
+        }
+    }
+
+    private async Task OpenProductDetailsDialog(Product product)
+    {
+        var parameters = new DialogParameters<ProductDetails> { { x => x.product, product } };
+        await DialogService.ShowAsync<ProductDetails>("Product Details", parameters);
+    }
+
+    private async Task DeleteProduct(int productId)
+    {
+        var parameters = new DialogParameters<CancelOkDialog> { { x => x.message, "Are you sure want to delete?" } };
+
+        var dialog = await DialogService.ShowAsync<CancelOkDialog>("Delete Product", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var success = await ProductService.DeleteProductAsync(productId);
+            if (success)
+            {
+                Snackbar.Add("Product deleted successfully!", Severity.Success);
+                await ProductService.LoadProductsAsync(true);
+            }
+            else
+            {
+                Snackbar.Add("Failed to delete product.", Severity.Error);
+            }
+        }
+    }
+}

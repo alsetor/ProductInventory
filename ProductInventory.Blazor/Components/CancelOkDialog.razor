@@ -1,0 +1,26 @@
+﻿@using MudBlazor
+@using ProductInventory.Blazor.Services
+@using ProductInventory.Blazor.Models
+
+<MudDialog>
+    <DialogContent>
+        @(message ?? "Are you sure?")
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Submit">Yes</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter]
+    public string message { get; set; }
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+
+    private void Cancel() => MudDialog.Cancel();
+}

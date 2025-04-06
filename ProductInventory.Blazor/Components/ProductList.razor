@@ -1,0 +1,64 @@
+﻿@using ProductInventory.Blazor.Models
+@using ProductInventory.Blazor.Services
+
+@inject AppStateService AppState
+
+<MudGrid Class="mt-2">
+    <MudItem xs="12">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" OnClick="() => Add()">Add Product</MudButton>
+    </MudItem>
+    <MudItem xs="12">
+        <MudTable Items="@Products" Striped="true" Hover="true">
+            <HeaderContent>
+                <MudTh>Id</MudTh>
+                <MudTh>Name</MudTh>
+                <MudTh>Price</MudTh>
+                <MudTh>Quantity</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Id">@context.Id</MudTd>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Price">€@context.Price</MudTd>
+                <MudTd DataLabel="Quantity">@context.Quantity</MudTd>
+                <MudTd>
+                    <MudButton Color="Color.Primary" OnClick="() => Details(context)">Details</MudButton>
+                    <MudButton Color="Color.Primary" OnClick="() => Edit(context)">Edit</MudButton>
+                    <MudButton Color="Color.Error" OnClick="() => Delete(context.Id)">Delete</MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudItem>
+    <MudItem xs="12" Class="d-flex justify-end flex-grow-1 gap-4 mb-4" Elevation="0">
+        <MudPagination Color="Color.Primary" Count="AppState.FilterState.TotalPages" Selected="AppState.FilterState.Page" SelectedChanged="OnPageChanged" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public List<Product> Products { get; set; } = new();
+    [Parameter] public EventCallback<Product> OnAdd { get; set; }
+    [Parameter] public EventCallback<Product> OnEdit { get; set; }
+    [Parameter] public EventCallback<Product> OnViewDetails { get; set; }
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+
+    private async Task Add()
+    {
+        await OnAdd.InvokeAsync(new Product());
+    }
+
+    private async Task Edit(Product product)
+    {
+        await OnEdit.InvokeAsync(product);
+    }
+
+    private async Task Details(Product product)
+    {
+        await OnViewDetails.InvokeAsync(product);
+    }
+
+    private async Task Delete(int productId)
+    {
+        await OnDelete.InvokeAsync(productId);
+    }
+}

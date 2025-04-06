@@ -1,0 +1,29 @@
+﻿@using MudBlazor
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="_currentTheme" />
+<MudDialogProvider FullWidth="true" />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudText Typo="Typo.h6">Product Inventory System</MudText>
+    </MudAppBar>
+    <MudPaper Height="100%" Width="100%">
+        <MudContainer Fixed="true">
+            <MudMainContent>
+                @Body
+            </MudMainContent>
+        </MudContainer>
+    </MudPaper>
+</MudLayout>
+
+@code {
+	private MudTheme _currentTheme = new MudTheme()
+	{
+		PaletteLight = new PaletteLight()
+		{
+            Primary = Colors.Blue.Lighten1,
+            AppbarBackground = Colors.Blue.Lighten1,
+		}
+	};
+}

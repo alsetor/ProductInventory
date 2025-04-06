@@ -1,0 +1,35 @@
+﻿@using MudBlazor
+@using ProductInventory.Blazor.Services
+@using ProductInventory.Blazor.Models
+
+<EditForm Model="@product" OnValidSubmit="Save">
+    <MudDialog>
+        <DialogContent>
+            <DataAnnotationsValidator />
+            <MudTextField @bind-Value="product.Name" For="@(() => product.Name)" Label="Name" HelperText="Max. 128 characters" Required="true" MaxLength="128" />
+            <MudTextField @bind-Value="product.Description" For="@(() => product.Description)" AutoGrow HelperText="Max. 1024 characters" Label="Description" MaxLength="1024" />
+            <MudTextField @bind-Value="product.Price" For="@(() => product.Price)" Label="Price" Type="number" Required="true" />
+			<MudTextField @bind-Value="product.Quantity" For="@(() => product.Quantity)" Label="Quantity" Type="number" Required="true" />
+		</DialogContent>
+        <DialogActions>
+			<MudButton OnClick="Cancel">Cancel</MudButton>
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+        </DialogActions>
+    </MudDialog>
+</EditForm>
+@code {
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter]
+    public Product product { get; set; }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Save()
+    {
+        StateHasChanged();
+        MudDialog.Close(DialogResult.Ok(product));
+    }
+}
