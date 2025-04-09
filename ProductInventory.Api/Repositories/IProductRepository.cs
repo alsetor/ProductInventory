@@ -6,7 +6,7 @@ namespace ProductInventory.Api.Repositories
     {
         Task<ProductListResponse> GetProductsAsync(ProductFilter filter);
         Task<Product?> GetByIdAsync(int id);
-        Task AddAsync(Product product);
+        Task<Product> AddAsync(Product product);
         Task UpdateAsync(Product product);
         Task DeleteAsync(int id);
     }

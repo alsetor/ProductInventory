@@ -32,8 +32,8 @@ namespace ProductInventory.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Add(Product product)
         {
-            await _repository.AddAsync(product);
-            return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
+            var createdProduct = await _repository.AddAsync(product);
+            return CreatedAtAction(nameof(Add), new { id = createdProduct.Id }, createdProduct);
         }
 
         [HttpPut("{id}")]
