@@ -39,21 +39,11 @@ ProductInventory
 
 ###  Locally (Development mode)
 
-#### 1. Run API
-
 ```bash
 cd ProductInventory.Api
 dotnet run --launch-profile "https"
 ```
-API runs at: https://localhost:7194, and Swagger UI is available on https://localhost:7194/swagger
-
-#### 2. Run Blazor Frontend
-```bash
-cd ProductInventory.Blazor
-dotnet run --launch-profile "https"
-```
-
-Blazor app runs at: https://localhost:7101. Ensure CORS policies in API allow Blazor port (https://localhost:7101).
+Project runs at: https://localhost:7194, and Swagger UI is available on https://localhost:7194/swagger
 
 ###  With Docker
 ```bash
@@ -185,7 +175,7 @@ Or use Swagger UI to explore interactively.
 
 ##  Testing the Blazor Application
 
-After starting the app locally (https://localhost:7101):
+After starting the app locally (https://localhost:7194):
 
 **1. Add Product**
 - Click *Add Product*.
